@@ -113,7 +113,7 @@ struct wined3d_settings wined3d_settings =
     FALSE,          /* VERTEX_ARRAY_BRGA is OK on most cases */
     FALSE,          /* CheckFloatConstants disabled by default */
     FALSE,          /* system cursor is visible or hidden by application */
-    TRUE,           /* Dynamic buffers may use buffer objects. */
+    FALSE,          /* Dynamic buffers stay in system memory: over qemu-3dfx a buffer map is a round trip. */
 };
 
 struct wined3d * CDECL wined3d_create(DWORD flags)
@@ -439,11 +439,18 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
               }
           }
 
-          if (!get_config_key(hkey, appkey, "DynamicBufferObjects", buffer, size)
-                && !strcmp(buffer, "disabled"))
+          if (!get_config_key(hkey, appkey, "DynamicBufferObjects", buffer, size))
           {
-              TRACE("Keeping dynamic buffers in system memory.\n");
-              wined3d_settings.dynamic_buffer_objects = FALSE;
+              if (!strcmp(buffer, "disabled"))
+              {
+                  TRACE("Keeping dynamic buffers in system memory.\n");
+                  wined3d_settings.dynamic_buffer_objects = FALSE;
+              }
+              else if (!strcmp(buffer, "enabled"))
+              {
+                  TRACE("Allowing buffer objects for dynamic buffers.\n");
+                  wined3d_settings.dynamic_buffer_objects = TRUE;
+              }
           }
 	        
 	    }
@@ -539,9 +546,12 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
 	  	wined3d_settings.hide_sys_cursor = TRUE;
 	  }
 
-	  if(strcmp(vmhal_setup_str("wine", "DynamicBufferObjects", TRUE), "disabled") == 0)
 	  {
-	  	wined3d_settings.dynamic_buffer_objects = FALSE;
+	  	const char *dynamicBufferObjects = vmhal_setup_str("wine", "DynamicBufferObjects", TRUE);
+	  	if(strcmp(dynamicBufferObjects, "disabled") == 0)
+	  		wined3d_settings.dynamic_buffer_objects = FALSE;
+	  	else if(strcmp(dynamicBufferObjects, "enabled") == 0)
+	  		wined3d_settings.dynamic_buffer_objects = TRUE;
 	  }
 
 	  if(vmhal_setup_str("wine", "MaxShaderModelVS", FALSE) != NULL)
