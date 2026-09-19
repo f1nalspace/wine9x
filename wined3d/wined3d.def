@@ -11,6 +11,7 @@ EXPORTS
   wined3d_check_device_multisample_type
   wined3d_check_device_type
   wined3d_create
+  wined3d_qemu3dfx_set_api
   wined3d_decref
   wined3d_enum_adapter_modes
   wined3d_get_adapter_count

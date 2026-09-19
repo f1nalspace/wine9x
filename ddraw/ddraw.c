@@ -4927,6 +4927,7 @@ HRESULT ddraw_init(struct ddraw *ddraw, DWORD flags, enum wined3d_device_type de
             return E_FAIL;
         }
     }
+    wined3d_qemu3dfx_set_api(ddraw->wined3d, "DDraw");
 
     if (FAILED(hr = wined3d_get_device_caps(ddraw->wined3d, WINED3DADAPTER_DEFAULT, device_type, &caps)))
     {

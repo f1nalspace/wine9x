@@ -483,6 +483,13 @@ ULONG CDECL wined3d_incref(struct wined3d *wined3d)
     return refcount;
 }
 
+/* qemu-3dfx frametap: every context of this object reports the name to the host once it changed. */
+void CDECL wined3d_qemu3dfx_set_api(struct wined3d *wined3d, const char *api_name)
+{
+    wined3d->qemu3dfx_api_name = api_name;
+    InterlockedIncrement(&wined3d->qemu3dfx_api_serial);
+}
+
 ULONG CDECL wined3d_decref(struct wined3d *wined3d)
 {
     ULONG refcount = InterlockedDecrement(&wined3d->ref);

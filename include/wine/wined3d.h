@@ -2083,6 +2083,7 @@ HRESULT __cdecl wined3d_check_device_type(const struct wined3d *wined3d, UINT ad
         enum wined3d_device_type device_type, enum wined3d_format_id display_format_id,
         enum wined3d_format_id backbuffer_format_id, BOOL windowed);
 struct wined3d * __cdecl wined3d_create(DWORD flags);
+void __cdecl wined3d_qemu3dfx_set_api(struct wined3d *wined3d, const char *api_name);
 ULONG __cdecl wined3d_decref(struct wined3d *wined3d);
 HRESULT __cdecl wined3d_enum_adapter_modes(const struct wined3d *wined3d, UINT adapter_idx,
         enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering,

@@ -3430,6 +3430,28 @@ static void context_setup_target(struct wined3d_context *context, struct wined3d
     context_set_render_offscreen(context, render_offscreen);
 }
 
+/* qemu-3dfx frametap: glDebugMessageInsertARB with this id carries the API name to the host ("FTAP"). */
+#define QEMU3DFX_API_MESSAGE_ID 0x50415446
+
+static void context_report_qemu3dfx_api(struct wined3d_context *context, const struct wined3d_device *device)
+{
+    const struct wined3d *wined3d = device->wined3d;
+    void (WINE_GLAPI *debug_message_insert)(GLenum, GLenum, GLuint, GLenum, GLsizei, const char *);
+    GLsizei length;
+
+    if (context->qemu3dfx_api_serial == wined3d->qemu3dfx_api_serial)
+        return;
+    context->qemu3dfx_api_serial = wined3d->qemu3dfx_api_serial;
+    if (!wined3d->qemu3dfx_api_name)
+        return;
+    /* The qemu-3dfx wrappers hand it out whatever the extension string says. */
+    debug_message_insert = (void *)context->gl_info->gl_ops.wgl.p_wglGetProcAddress("glDebugMessageInsertARB");
+    if (!debug_message_insert)
+        return;
+    length = strlen(wined3d->qemu3dfx_api_name) + 1;
+    debug_message_insert(GL_DEBUG_SOURCE_APPLICATION, GL_DEBUG_TYPE_OTHER, QEMU3DFX_API_MESSAGE_ID, GL_DEBUG_SEVERITY_LOW, length, wined3d->qemu3dfx_api_name);
+}
+
 struct wined3d_context *context_acquire(const struct wined3d_device *device, struct wined3d_surface *target)
 {
     struct wined3d_context *current_context = context_get_current();
@@ -3499,6 +3521,8 @@ struct wined3d_context *context_acquire(const struct wined3d_device *device, str
     {
         context_set_gl_context(context);
     }
+
+    context_report_qemu3dfx_api(context, device);
 
     return context;
 }

@@ -6854,6 +6854,7 @@ HRESULT d3d_device_create(struct ddraw *ddraw, struct ddraw_surface *target, IUn
         UINT version, struct d3d_device **device, IUnknown *outer_unknown)
 {
     struct d3d_device *object;
+    const char *api_name;
     HRESULT hr;
 
     TRACE("ddraw %p, target %p, version %u, device %p, outer_unknown %p.\n",
@@ -6909,6 +6910,10 @@ HRESULT d3d_device_create(struct ddraw *ddraw, struct ddraw_surface *target, IUn
 
     TRACE("Created device %p.\n", object);
     *device = object;
+
+    /* qemu-3dfx frametap: Direct3D 1 to 6 all come through IDirect3D, IDirect3D2 or IDirect3D3. */
+    api_name = (version == 7)? "D3D7":"D3D";
+    wined3d_qemu3dfx_set_api(ddraw->wined3d, api_name);
 
     return D3D_OK;
 }

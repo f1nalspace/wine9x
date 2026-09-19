@@ -651,6 +651,7 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended)
     wined3d_mutex_unlock();
     if (!d3d9->wined3d)
         return FALSE;
+    wined3d_qemu3dfx_set_api(d3d9->wined3d, "D3D9");
     d3d9->extended = extended;
 
     return TRUE;

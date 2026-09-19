@@ -8,6 +8,7 @@
 @ cdecl wined3d_check_device_multisample_type(ptr long long long long long ptr)
 @ cdecl wined3d_check_device_type(ptr long long long long long)
 @ cdecl wined3d_create(long)
+@ cdecl wined3d_qemu3dfx_set_api(ptr str)
 @ cdecl wined3d_decref(ptr)
 @ cdecl wined3d_enum_adapter_modes(ptr long long long long ptr)
 @ cdecl wined3d_get_adapter_count(ptr)
