@@ -27,6 +27,99 @@
 WINE_DEFAULT_DEBUG_CHANNEL(d3d);
 WINE_DECLARE_DEBUG_CHANNEL(fps);
 
+/* Windows sets a window's pixel format only once; drawing into a child keeps the application's window free for its own OpenGL. */
+static HWND swapchain_create_child_window(struct wined3d_swapchain *swapchain, HWND window)
+{
+    DWORD flags = swapchain->device->wined3d->flags;
+    DWORD window_thread;
+    DWORD current_thread;
+    DWORD error;
+    RECT client_rect;
+    int format;
+    HWND child;
+    HDC dc;
+
+    if (!(flags & WINED3D_CHILD_WINDOW) || (flags & WINED3D_NO3D) || !window)
+    {
+        return window;
+    }
+    window_thread = GetWindowThreadProcessId(window, NULL);
+    current_thread = GetCurrentThreadId();
+    if (window_thread != current_thread)
+    {
+        return window;
+    }
+    if (!(dc = GetDC(window)))
+    {
+        return window;
+    }
+    format = GetPixelFormat(dc);
+    ReleaseDC(window, dc);
+    if (format)
+    {
+        return window;
+    }
+
+    GetClientRect(window, &client_rect);
+    if (!(child = CreateWindowExA(WS_EX_NOPARENTNOTIFY, WINED3D_OPENGL_WINDOW_CLASS_NAME, "WineD3D child window", WS_CHILD | WS_DISABLED | WS_CLIPSIBLINGS, 0, 0, client_rect.right, client_rect.bottom, window, NULL, wined3d_gethInstDLL(), NULL)))
+    {
+        error = GetLastError();
+        ERR("Failed to create a child window for window %p, last error %#x.\n", window, error);
+        return window;
+    }
+    /* A disabled child passes the mouse on to its parent. */
+    SetWindowPos(child, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+
+    TRACE("Created child window %p for window %p.\n", child, window);
+    swapchain->child_window = child;
+    swapchain->child_parent = window;
+    return child;
+}
+
+static void swapchain_destroy_child_window(struct wined3d_swapchain *swapchain)
+{
+    if (!swapchain->child_window)
+    {
+        return;
+    }
+
+    TRACE("Destroying child window %p.\n", swapchain->child_window);
+    if (!DestroyWindow(swapchain->child_window))
+    {
+        PostMessageA(swapchain->child_window, WM_CLOSE, 0, 0);
+    }
+    swapchain->child_window = NULL;
+    swapchain->child_parent = NULL;
+}
+
+void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
+{
+    RECT parent_rect, child_rect;
+    DWORD child_thread;
+    DWORD current_thread;
+
+    if (!swapchain->child_window)
+    {
+        return;
+    }
+    child_thread = GetWindowThreadProcessId(swapchain->child_window, NULL);
+    current_thread = GetCurrentThreadId();
+    if (child_thread != current_thread)
+    {
+        return;
+    }
+
+    GetClientRect(swapchain->child_parent, &parent_rect);
+    GetClientRect(swapchain->child_window, &child_rect);
+    if (parent_rect.right == child_rect.right && parent_rect.bottom == child_rect.bottom)
+    {
+        return;
+    }
+
+    TRACE("Resizing child window %p to %ldx%ld.\n", swapchain->child_window, parent_rect.right, parent_rect.bottom);
+    SetWindowPos(swapchain->child_window, NULL, 0, 0, parent_rect.right, parent_rect.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+}
+
 static void swapchain_cleanup(struct wined3d_swapchain *swapchain)
 {
     HRESULT hr;
@@ -65,6 +158,7 @@ static void swapchain_cleanup(struct wined3d_swapchain *swapchain)
         context_destroy(swapchain->device, swapchain->context[i]);
     }
     free(swapchain->context);
+    swapchain_destroy_child_window(swapchain);
 
     /* Restore the screen resolution if we rendered in fullscreen.
      * This will restore the screen resolution to what it was before creating
@@ -126,10 +220,15 @@ void CDECL wined3d_swapchain_set_window(struct wined3d_swapchain *swapchain, HWN
         window = swapchain->device_window;
     if (window == swapchain->win_handle)
         return;
+    if (swapchain->child_window && window == swapchain->child_parent)
+    {
+        return;
+    }
 
     TRACE("Setting swapchain %p window from %p to %p.\n",
             swapchain, swapchain->win_handle, window);
-    swapchain->win_handle = window;
+    swapchain_destroy_child_window(swapchain);
+    swapchain->win_handle = swapchain_create_child_window(swapchain, window);
 }
 
 HRESULT CDECL wined3d_swapchain_present(struct wined3d_swapchain *swapchain,
@@ -735,6 +834,7 @@ static void swapchain_update_render_to_fbo(struct wined3d_swapchain *swapchain)
         return;
     }
 
+    swapchain_update_child_window(swapchain);
     GetClientRect(swapchain->win_handle, &client_rect);
 
     TRACE("Backbuffer %ux%u, window %ux%u.\n",
@@ -787,8 +887,8 @@ static HRESULT swapchain_init(struct wined3d_swapchain *swapchain, struct wined3
     swapchain->parent = parent;
     swapchain->parent_ops = parent_ops;
     swapchain->ref = 1;
-    swapchain->win_handle = window;
     swapchain->device_window = window;
+    swapchain->win_handle = swapchain_create_child_window(swapchain, window);
 
     if (FAILED(hr = wined3d_get_adapter_display_mode(device->wined3d,
             adapter->ordinal, &swapchain->original_mode, NULL)))
@@ -1034,6 +1134,7 @@ err:
         }
         free(swapchain->context);
     }
+    swapchain_destroy_child_window(swapchain);
 
     if (swapchain->front_buffer)
     {
