@@ -766,6 +766,7 @@ static LONG fullscreen_exstyle(LONG exstyle)
 
 void CDECL wined3d_device_setup_fullscreen_window(struct wined3d_device *device, HWND window, UINT w, UINT h)
 {
+    UINT window_pos_flags = SWP_FRAMECHANGED | SWP_NOACTIVATE;
     BOOL filter_messages;
     LONG style, exstyle;
 
@@ -786,12 +787,22 @@ void CDECL wined3d_device_setup_fullscreen_window(struct wined3d_device *device,
     TRACE("Old style was %08x, %08x, setting to %08x, %08x.\n",
             device->style, device->exStyle, style, exstyle);
 
+    /* No window changes: a hidden window stays hidden, the Z order stays. */
+    if (device->create_parms.flags & WINED3DCREATE_NOWINDOWCHANGES)
+    {
+        window_pos_flags |= SWP_NOZORDER;
+    }
+    else
+    {
+        window_pos_flags |= SWP_SHOWWINDOW;
+    }
+
     filter_messages = device->filter_messages;
     device->filter_messages = TRUE;
 
     SetWindowLongA(window, GWL_STYLE, style);
     SetWindowLongA(window, GWL_EXSTYLE, exstyle);
-    SetWindowPos(window, HWND_TOPMOST, 0, 0, w, h, SWP_FRAMECHANGED | SWP_SHOWWINDOW | SWP_NOACTIVATE);
+    SetWindowPos(window, HWND_TOPMOST, 0, 0, w, h, window_pos_flags);
 
     device->filter_messages = filter_messages;
 }
@@ -1190,6 +1201,21 @@ void CDECL wined3d_device_set_multithreaded(struct wined3d_device *device)
 
     /* For now just store the flag (needed in case of ddraw). */
     device->create_parms.flags |= WINED3DCREATE_MULTITHREADED;
+}
+
+/* DirectDraw passes DDSCL_NOWINDOWCHANGES from SetCooperativeLevel as D3DCREATE_NOWINDOWCHANGES. */
+void CDECL wined3d_device_set_window_changes(struct wined3d_device *device, BOOL allow_window_changes)
+{
+    TRACE("device %p, allow_window_changes %#x.\n", device, allow_window_changes);
+
+    if (allow_window_changes)
+    {
+        device->create_parms.flags &= ~WINED3DCREATE_NOWINDOWCHANGES;
+    }
+    else
+    {
+        device->create_parms.flags |= WINED3DCREATE_NOWINDOWCHANGES;
+    }
 }
 
 UINT CDECL wined3d_device_get_available_texture_mem(const struct wined3d_device *device)
