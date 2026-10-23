@@ -114,6 +114,8 @@ struct wined3d_settings wined3d_settings =
     FALSE,          /* CheckFloatConstants disabled by default */
     FALSE,          /* system cursor is visible or hidden by application */
     FALSE,          /* Dynamic buffers stay in system memory: over qemu-3dfx a buffer map is a round trip. */
+    0,              /* No display mode width limit by default. */
+    0,              /* No display mode height limit by default. */
 };
 
 struct wined3d * CDECL wined3d_create(DWORD flags)
@@ -450,6 +452,18 @@ static BOOL wined3d_dll_init(HINSTANCE hInstDLL)
               {
                   TRACE("Allowing buffer objects for dynamic buffers.\n");
                   wined3d_settings.dynamic_buffer_objects = TRUE;
+              }
+          }
+
+          if (!get_config_key(hkey, appkey, "MaxDisplayMode", buffer, size))
+          {
+              unsigned int width = 0;
+              unsigned int height = 0;
+              if (sscanf(buffer, "%ux%u", &width, &height) == 2)
+              {
+                  TRACE("Enumerating display modes up to %ux%u.\n", width, height);
+                  wined3d_settings.max_mode_width = width;
+                  wined3d_settings.max_mode_height = height;
               }
           }
 	        

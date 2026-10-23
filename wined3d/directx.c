@@ -4201,6 +4201,14 @@ BOOL EnumDisplaySettingsA95(LPCSTR lpszDeviceName, DWORD iModeNum, DEVMODEA *lpD
 /* FIXME: GetAdapterModeCount and EnumAdapterModes currently only returns modes
      of the same bpp but different resolutions                                  */
 
+/* MaxDisplayMode: old games write the list of modes into fixed buffers (Drakan's graphics menu). */
+static BOOL mode_beyond_limit(const DEVMODEA *mode)
+{
+    BOOL too_wide = wined3d_settings.max_mode_width && mode->dmPelsWidth > wined3d_settings.max_mode_width;
+    BOOL too_high = wined3d_settings.max_mode_height && mode->dmPelsHeight > wined3d_settings.max_mode_height;
+    return too_wide || too_high;
+}
+
 /* Note: dx9 supplies a format. Calls from d3d8 supply WINED3DFMT_UNKNOWN */
 UINT CDECL wined3d_get_adapter_mode_count(const struct wined3d *wined3d, UINT adapter_idx,
         enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering)
@@ -4227,6 +4235,11 @@ UINT CDECL wined3d_get_adapter_mode_count(const struct wined3d *wined3d, UINT ad
 
     while (EnumDisplaySettingsA95(adapter->DeviceName, j++, &mode))
     {
+        if (mode_beyond_limit(&mode))
+        {
+            continue;
+        }
+
         if (mode.dmFields & DM_DISPLAYFLAGS)
         {
             if (scanline_ordering == WINED3D_SCANLINE_ORDERING_PROGRESSIVE
@@ -4285,6 +4298,11 @@ HRESULT CDECL wined3d_enum_adapter_modes(const struct wined3d *wined3d, UINT ada
         {
             WARN("Invalid mode_idx %u.\n", mode_idx);
             return WINED3DERR_INVALIDCALL;
+        }
+
+        if (mode_beyond_limit(&m))
+        {
+            continue;
         }
 
         if (m.dmFields & DM_DISPLAYFLAGS)

@@ -292,6 +292,9 @@ struct wined3d_settings
    	BOOL check_float_constants;
    	BOOL hide_sys_cursor;
     BOOL dynamic_buffer_objects;
+    /* MaxDisplayMode: modes wider or higher are not enumerated, 0 for no limit. */
+    unsigned int max_mode_width;
+    unsigned int max_mode_height;
 };
 
 extern struct wined3d_settings wined3d_settings DECLSPEC_HIDDEN;
