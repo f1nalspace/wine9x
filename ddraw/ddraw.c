@@ -1843,6 +1843,14 @@ static HRESULT WINAPI ddraw1_GetMonitorFrequency(IDirectDraw *iface, DWORD *freq
     return ddraw7_GetMonitorFrequency(&ddraw->IDirectDraw7_iface, frequency);
 }
 
+/* The raster status of the swapchain -- the driver's blanks when it counts them -- or else of the adapter. */
+static HRESULT ddraw_get_raster_status(struct ddraw *ddraw, struct wined3d_raster_status *raster_status)
+{
+    if (ddraw->wined3d_swapchain)
+        return wined3d_swapchain_get_raster_status(ddraw->wined3d_swapchain, raster_status);
+    return wined3d_get_adapter_raster_status(ddraw->wined3d, WINED3DADAPTER_DEFAULT, raster_status);
+}
+
 static HRESULT WINAPI ddraw7_GetVerticalBlankStatus(IDirectDraw7 *iface, BOOL *status)
 {
     struct ddraw *ddraw = impl_from_IDirectDraw7(iface);
@@ -1855,7 +1863,7 @@ static HRESULT WINAPI ddraw7_GetVerticalBlankStatus(IDirectDraw7 *iface, BOOL *s
         return DDERR_INVALIDPARAMS;
 
     wined3d_mutex_lock();
-    hr = wined3d_get_adapter_raster_status(ddraw->wined3d, WINED3DADAPTER_DEFAULT, &raster_status);
+    hr = ddraw_get_raster_status(ddraw, &raster_status);
     wined3d_mutex_unlock();
     if (FAILED(hr))
     {
@@ -2135,9 +2143,23 @@ static HRESULT WINAPI ddraw1_FlipToGDISurface(IDirectDraw *iface)
  *****************************************************************************/
 static HRESULT WINAPI ddraw7_WaitForVerticalBlank(IDirectDraw7 *iface, DWORD Flags, HANDLE event)
 {
+    struct ddraw *ddraw = impl_from_IDirectDraw7(iface);
     static BOOL hide;
+    HRESULT hr = WINED3DERR_NOTAVAILABLE;
 
     TRACE("iface %p, flags %#x, event %p.\n", iface, Flags, event);
+
+    /* MSDN says DDWAITVB_BLOCKBEGINEVENT is not supported */
+    if(Flags & DDWAITVB_BLOCKBEGINEVENT)
+        return DDERR_UNSUPPORTED; /* unchecked */
+
+    /* The next blank, from the driver when it counts them (WGL_OML_sync_control). */
+    wined3d_mutex_lock();
+    if (ddraw->wined3d_swapchain)
+        hr = wined3d_swapchain_wait_for_vblank(ddraw->wined3d_swapchain, 0);
+    wined3d_mutex_unlock();
+    if (SUCCEEDED(hr))
+        return DD_OK;
 
     /* This function is called often, so print the fixme only once */
     if(!hide)
@@ -2145,10 +2167,6 @@ static HRESULT WINAPI ddraw7_WaitForVerticalBlank(IDirectDraw7 *iface, DWORD Fla
         FIXME("iface %p, flags %#x, event %p stub!\n", iface, Flags, event);
         hide = TRUE;
     }
-
-    /* MSDN says DDWAITVB_BLOCKBEGINEVENT is not supported */
-    if(Flags & DDWAITVB_BLOCKBEGINEVENT)
-        return DDERR_UNSUPPORTED; /* unchecked */
 
     return DD_OK;
 }
@@ -2189,7 +2207,7 @@ static HRESULT WINAPI ddraw7_GetScanLine(IDirectDraw7 *iface, DWORD *Scanline)
     TRACE("iface %p, line %p.\n", iface, Scanline);
 
     wined3d_mutex_lock();
-    hr = wined3d_get_adapter_raster_status(ddraw->wined3d, WINED3DADAPTER_DEFAULT, &raster_status);
+    hr = ddraw_get_raster_status(ddraw, &raster_status);
     wined3d_mutex_unlock();
     if (FAILED(hr))
     {
