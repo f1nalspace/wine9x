@@ -1185,7 +1185,6 @@ struct wined3d_context
     struct wined3d_swapchain *swapchain;
     struct wined3d_surface *current_rt;
     DWORD                   tid;    /* Thread ID which owns this context at the moment */
-    LONG                    qemu3dfx_api_serial;    /* the API name serial this context last reported */
 
     /* Stores some information about the context state for optimization */
     DWORD render_offscreen : 1;
@@ -1988,8 +1987,6 @@ struct wined3d
 {
     LONG ref;
     DWORD flags;
-    const char *qemu3dfx_api_name;  /* qemu-3dfx frametap: shown by the host in front of the frame rate */
-    LONG qemu3dfx_api_serial;
     UINT adapter_count;
     struct wined3d_adapter adapters[1];
 };
