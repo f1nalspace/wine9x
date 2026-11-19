@@ -95,16 +95,11 @@ static void swapchain_destroy_child_window(struct wined3d_swapchain *swapchain)
 void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
 {
     RECT parent_rect, child_rect;
+    UINT position_flags = SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE;
     DWORD child_thread;
     DWORD current_thread;
 
     if (!swapchain->child_window)
-    {
-        return;
-    }
-    child_thread = GetWindowThreadProcessId(swapchain->child_window, NULL);
-    current_thread = GetCurrentThreadId();
-    if (child_thread != current_thread)
     {
         return;
     }
@@ -116,8 +111,17 @@ void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
         return;
     }
 
+    /* DirectShow's renderers set DirectDraw up in the player's thread and draw from a streaming thread: from a thread that does not own
+     * the child, the new size is posted -- a sent message would wait for a thread that may be waiting for this one. */
+    child_thread = GetWindowThreadProcessId(swapchain->child_window, NULL);
+    current_thread = GetCurrentThreadId();
+    if (child_thread != current_thread)
+    {
+        position_flags |= SWP_ASYNCWINDOWPOS;
+    }
+
     TRACE("Resizing child window %p to %ldx%ld.\n", swapchain->child_window, parent_rect.right, parent_rect.bottom);
-    SetWindowPos(swapchain->child_window, NULL, 0, 0, parent_rect.right, parent_rect.bottom, SWP_NOMOVE | SWP_NOZORDER | SWP_NOACTIVATE);
+    SetWindowPos(swapchain->child_window, NULL, 0, 0, parent_rect.right, parent_rect.bottom, position_flags);
 }
 
 static void swapchain_cleanup(struct wined3d_swapchain *swapchain)

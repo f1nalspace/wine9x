@@ -3423,7 +3423,7 @@ struct wined3d_context *context_find_create(struct wined3d_device *device,
         const struct wined3d_format *ds_format);
 
 /* The WNDCLASS-Name for the fake window which we use to retrieve the GL capabilities */
-#define WINED3D_OPENGL_WINDOW_CLASS_NAME "WineD3D_OpenGL"
+#define WINED3D_OPENGL_WINDOW_CLASS_NAME WINED3D_WINDOW_CLASS_NAME
 
 #define MAKEDWORD_VERSION(maj, min) (((maj & 0xffffu) << 16) | (min & 0xffffu))
 

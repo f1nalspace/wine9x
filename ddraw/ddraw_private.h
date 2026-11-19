@@ -194,6 +194,12 @@ struct ddraw_surface
     struct list             surface_list_entry;
 
     DWORD                   Handle;
+
+    /* An overlay's place as UpdateOverlay and SetOverlayPosition left it: it is drawn onto the destination after each change and Flip. */
+    struct ddraw_surface    *overlay_destination;
+    RECT                    overlay_source_rect;
+    RECT                    overlay_destination_rect;
+    BOOL                    overlay_shown;
 };
 
 struct ddraw_texture
