@@ -67,8 +67,8 @@ static HWND swapchain_create_child_window(struct wined3d_swapchain *swapchain, H
         ERR("Failed to create a child window for window %p, last error %#x.\n", window, error);
         return window;
     }
-    /* A disabled child passes the mouse on to its parent. */
-    SetWindowPos(child, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+    /* A disabled child passes the mouse on to its parent. It stays hidden until WineD3D draws into it (swapchain_show_child_window). */
+    SetWindowPos(child, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
 
     TRACE("Created child window %p for window %p.\n", child, window);
     swapchain->child_window = child;
@@ -122,6 +122,38 @@ void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
 
     TRACE("Resizing child window %p to %ldx%ld.\n", swapchain->child_window, parent_rect.right, parent_rect.bottom);
     SetWindowPos(swapchain->child_window, NULL, 0, 0, parent_rect.right, parent_rect.bottom, position_flags);
+}
+
+/* The child window becomes visible when WineD3D first draws into it. Until then it covers nothing: DirectShow's old Video Renderer sets
+ * DirectDraw up on its window even behind the Overlay Mixer, which draws the picture, and the parent keeps its whole visible region. */
+void swapchain_show_child_window(struct wined3d_swapchain *swapchain)
+{
+    LONG child_style;
+    DWORD child_thread;
+    DWORD current_thread;
+
+    if (!swapchain->child_window)
+    {
+        return;
+    }
+    child_style = GetWindowLongA(swapchain->child_window, GWL_STYLE);
+    if (child_style & WS_VISIBLE)
+    {
+        return;
+    }
+
+    swapchain_update_child_window(swapchain);
+    TRACE("Showing child window %p.\n", swapchain->child_window);
+    child_thread = GetWindowThreadProcessId(swapchain->child_window, NULL);
+    current_thread = GetCurrentThreadId();
+    if (child_thread != current_thread)
+    {
+        ShowWindowAsync(swapchain->child_window, SW_SHOWNA);
+    }
+    else
+    {
+        ShowWindow(swapchain->child_window, SW_SHOWNA);
+    }
 }
 
 static void swapchain_cleanup(struct wined3d_swapchain *swapchain)
@@ -638,6 +670,7 @@ static void swapchain_gl_present(struct wined3d_swapchain *swapchain, const RECT
     RECT src_rect, dst_rect;
     BOOL render_to_fbo;
 
+    swapchain_show_child_window(swapchain);
     context = context_acquire(swapchain->device, back_buffer);
     if (!context->valid)
     {
