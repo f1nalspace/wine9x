@@ -27,6 +27,21 @@
 WINE_DEFAULT_DEBUG_CHANNEL(d3d);
 WINE_DECLARE_DEBUG_CHANNEL(fps);
 
+/* The parent keeps the child's area in its own clip region. DirectShow's old Video Renderer stops using DirectDraw once the clip box of
+ * its window is no simple rectangle; what the parent draws under the child is covered by the child's picture anyway. */
+static void swapchain_unclip_child_parent(struct wined3d_swapchain *swapchain)
+{
+    LONG parent_style = GetWindowLongA(swapchain->child_parent, GWL_STYLE);
+
+    if (!(parent_style & WS_CLIPCHILDREN))
+    {
+        return;
+    }
+    TRACE("Taking WS_CLIPCHILDREN from window %p.\n", swapchain->child_parent);
+    SetWindowLongA(swapchain->child_parent, GWL_STYLE, parent_style & ~WS_CLIPCHILDREN);
+    swapchain->child_parent_unclipped = TRUE;
+}
+
 /* Windows sets a window's pixel format only once; drawing into a child keeps the application's window free for its own OpenGL. */
 static HWND swapchain_create_child_window(struct wined3d_swapchain *swapchain, HWND window)
 {
@@ -73,6 +88,7 @@ static HWND swapchain_create_child_window(struct wined3d_swapchain *swapchain, H
     TRACE("Created child window %p for window %p.\n", child, window);
     swapchain->child_window = child;
     swapchain->child_parent = window;
+    swapchain_unclip_child_parent(swapchain);
     return child;
 }
 
@@ -88,8 +104,15 @@ static void swapchain_destroy_child_window(struct wined3d_swapchain *swapchain)
     {
         PostMessageA(swapchain->child_window, WM_CLOSE, 0, 0);
     }
+    if (swapchain->child_parent_unclipped && IsWindow(swapchain->child_parent))
+    {
+        LONG parent_style = GetWindowLongA(swapchain->child_parent, GWL_STYLE);
+
+        SetWindowLongA(swapchain->child_parent, GWL_STYLE, parent_style | WS_CLIPCHILDREN);
+    }
     swapchain->child_window = NULL;
     swapchain->child_parent = NULL;
+    swapchain->child_parent_unclipped = FALSE;
 }
 
 void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
@@ -103,6 +126,8 @@ void swapchain_update_child_window(struct wined3d_swapchain *swapchain)
     {
         return;
     }
+    /* Players set their renderer window's style after connecting, WS_CLIPCHILDREN with it. */
+    swapchain_unclip_child_parent(swapchain);
 
     GetClientRect(swapchain->child_parent, &parent_rect);
     GetClientRect(swapchain->child_window, &child_rect);
