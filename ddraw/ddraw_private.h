@@ -59,6 +59,12 @@ struct FvfToDecl
 
 #define DDRAW_STRIDE_ALIGNMENT  8
 
+/* Overlays are blitted onto their destination (ddraw_surface_draw_overlay): one is shown at a time, stretched by a factor of 0.1 to 32,
+ * in thousandths as DDCAPS counts them. */
+#define DDRAW_MAX_VISIBLE_OVERLAYS  1
+#define DDRAW_OVERLAY_MIN_STRETCH   100
+#define DDRAW_OVERLAY_MAX_STRETCH   32000
+
 #define DDRAW_WINED3D_FLAGS     (WINED3D_LEGACY_DEPTH_BIAS | WINED3D_VIDMEM_ACCOUNTING \
         | WINED3D_RESTORE_MODE_ON_ACTIVATE | WINED3D_FOCUS_MESSAGES | WINED3D_PIXEL_CENTER_INTEGER \
         | WINED3D_CHILD_WINDOW)
