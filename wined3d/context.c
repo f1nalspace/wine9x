@@ -3534,6 +3534,23 @@ static void context_setup_target(struct wined3d_context *context, struct wined3d
     context_set_render_offscreen(context, render_offscreen);
 }
 
+/* fvm3dx: name the API this context draws for to the fvm3dx OpenGL driver, for its performance overlay -- once, and again when it changes. */
+static void context_name_fvm3dx_api(struct wined3d_context *context, const struct wined3d_device *device)
+{
+    const struct wined3d_gl_info *gl_info = context->gl_info;
+    UINT api = device->wined3d->fvm3dx_api;
+
+    if (context->fvm3dx_api == api || !gl_info->p_wglFVM3DXPerfApi)
+    {
+        return;
+    }
+    context->fvm3dx_api = api;
+    if (api)
+    {
+        gl_info->p_wglFVM3DXPerfApi(api);
+    }
+}
+
 struct wined3d_context *context_acquire(const struct wined3d_device *device, struct wined3d_surface *target)
 {
     struct wined3d_context *current_context = context_get_current();
@@ -3603,6 +3620,8 @@ struct wined3d_context *context_acquire(const struct wined3d_device *device, str
     {
         context_set_gl_context(context);
     }
+
+    context_name_fvm3dx_api(context, device);
 
     return context;
 }

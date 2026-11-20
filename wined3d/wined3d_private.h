@@ -1185,6 +1185,7 @@ struct wined3d_context
     struct wined3d_swapchain *swapchain;
     struct wined3d_surface *current_rt;
     DWORD                   tid;    /* Thread ID which owns this context at the moment */
+    UINT                    fvm3dx_api;     /* the API this context last named to the fvm3dx OpenGL driver, 0 for none yet */
 
     /* Stores some information about the context state for optimization */
     DWORD render_offscreen : 1;
@@ -1766,6 +1767,8 @@ struct wined3d_gl_info
     float fixed_polyoffset_scale, float_polyoffset_scale;
 
     HGLRC (WINAPI *p_wglCreateContextAttribsARB)(HDC dc, HGLRC share, const GLint *attribs);
+    /* fvm3dx: the OpenGL driver's private function that names the API of the current context; NULL with any other driver. */
+    BOOL (WINAPI *p_wglFVM3DXPerfApi)(UINT api);
     struct opengl_funcs gl_ops;
     struct wined3d_fbo_ops fbo_ops;
 
@@ -1987,6 +1990,7 @@ struct wined3d
 {
     LONG ref;
     DWORD flags;
+    UINT fvm3dx_api;    /* WINED3D_FVM3DX_API_*, 0 for none: named by every context of this object to the fvm3dx OpenGL driver */
     UINT adapter_count;
     struct wined3d_adapter adapters[1];
 };

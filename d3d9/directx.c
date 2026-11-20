@@ -651,6 +651,7 @@ BOOL d3d9_init(struct d3d9 *d3d9, BOOL extended)
     wined3d_mutex_unlock();
     if (!d3d9->wined3d)
         return FALSE;
+    wined3d_set_fvm3dx_api(d3d9->wined3d, WINED3D_FVM3DX_API_D3D9);
     d3d9->extended = extended;
 
     return TRUE;

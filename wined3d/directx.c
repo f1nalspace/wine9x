@@ -486,6 +486,14 @@ ULONG CDECL wined3d_incref(struct wined3d *wined3d)
     return refcount;
 }
 
+/* fvm3dx: every context of this object names the API to the fvm3dx OpenGL driver the next time it is acquired. */
+void CDECL wined3d_set_fvm3dx_api(struct wined3d *wined3d, UINT api)
+{
+    TRACE("wined3d %p, api %u.\n", wined3d, api);
+
+    wined3d->fvm3dx_api = api;
+}
+
 ULONG CDECL wined3d_decref(struct wined3d *wined3d)
 {
     ULONG refcount = InterlockedDecrement(&wined3d->ref);
@@ -3658,6 +3666,7 @@ static BOOL wined3d_adapter_init_gl_caps(struct wined3d_adapter *adapter)
     gl_version = wined3d_parse_gl_version(gl_version_str);
 
     load_gl_funcs(gl_info);
+    gl_info->p_wglFVM3DXPerfApi = (void *)wglGetProcAddress("wglFVM3DXPerfApi");
 
     memset(gl_info->supported, 0, sizeof(gl_info->supported));
     gl_info->supported[WINED3D_GL_EXT_NONE] = TRUE;

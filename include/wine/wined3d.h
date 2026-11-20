@@ -2087,6 +2087,13 @@ HRESULT __cdecl wined3d_check_device_type(const struct wined3d *wined3d, UINT ad
         enum wined3d_device_type device_type, enum wined3d_format_id display_format_id,
         enum wined3d_format_id backbuffer_format_id, BOOL windowed);
 struct wined3d * __cdecl wined3d_create(DWORD flags);
+/* fvm3dx: the API a wined3d object draws for, which its contexts name to the fvm3dx OpenGL driver for its performance overlay -- the values
+ * of FVM3DX_PERF_API_* in the fvm3dx protocol. */
+#define WINED3D_FVM3DX_API_D3D9 2
+#define WINED3D_FVM3DX_API_D3D8 3
+#define WINED3D_FVM3DX_API_D3D7 4
+#define WINED3D_FVM3DX_API_DDRAW 6
+void __cdecl wined3d_set_fvm3dx_api(struct wined3d *wined3d, UINT api);
 ULONG __cdecl wined3d_decref(struct wined3d *wined3d);
 HRESULT __cdecl wined3d_enum_adapter_modes(const struct wined3d *wined3d, UINT adapter_idx,
         enum wined3d_format_id format_id, enum wined3d_scanline_ordering scanline_ordering,

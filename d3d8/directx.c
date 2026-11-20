@@ -417,6 +417,7 @@ BOOL d3d8_init(struct d3d8 *d3d8)
     
     if (!d3d8->wined3d)
         return FALSE;
+    wined3d_set_fvm3dx_api(d3d8->wined3d, WINED3D_FVM3DX_API_D3D8);
 
     return TRUE;
 }

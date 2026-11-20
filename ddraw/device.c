@@ -6910,5 +6910,8 @@ HRESULT d3d_device_create(struct ddraw *ddraw, struct ddraw_surface *target, IUn
     TRACE("Created device %p.\n", object);
     *device = object;
 
+    /* fvm3dx: from now on Direct3D draws through this DirectDraw object, whichever of Direct3D 1 to 7 it is. */
+    wined3d_set_fvm3dx_api(ddraw->wined3d, WINED3D_FVM3DX_API_D3D7);
+
     return D3D_OK;
 }
