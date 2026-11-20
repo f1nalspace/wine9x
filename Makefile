@@ -375,6 +375,10 @@ d3d9_OBJS     += d3d9/d3d9.res
 wined3d_OBJS  += wined3d/wined3d.res
 winetray_OBJS += tray/winetray.res
 
+# Every object depends on every header: a structure that changes in a header has to change in every object that uses it.
+SOURCE_HEADERS := $(wildcard include/*.h include/wine/*.h compact/*.h wined3d/*.h ddraw/*.h d3d8/*.h d3d9/*.h)
+$(filter %.c$(OBJ),$(wined3d_OBJS) $(ddraw_OBJS) $(d3d8_OBJS) $(d3d9_OBJS)): $(SOURCE_HEADERS)
+
 LD_DEPS := pthread9x/$(LIBPREFIX)pthread$(LIBSUFFIX)
 
 wined3d.dll: $(wined3d_OBJS) compact/debug.c$(OBJ) $(WINELIB_DEPS) $(LD_DEPS)
